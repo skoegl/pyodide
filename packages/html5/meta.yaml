@@ -1,0 +1,10 @@
+package:
+  name: html5
+  version: "2.4"
+
+source:
+  path: src
+
+test:
+  imports:
+    - html5
