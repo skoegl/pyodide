@@ -44,11 +44,14 @@ _findImports(char* code)
 
   PyObject* ret = PyObject_CallFunctionObjArgs(find_imports, py_code, NULL);
 
+  printf("_findImports ret = %p\n", ret);
+
   if (ret == NULL) {
     return pythonexc2js();
   }
 
   int id = python2js(ret);
+  printf("id = %d\n", id);
   Py_DECREF(ret);
   return id;
 }
@@ -96,6 +99,9 @@ EM_JS(int, runpython_init_js, (), {
         if (packageNames[name] !== undefined) {
           // clang-format on
           packages[packageNames[name]] = undefined;
+        }
+        else {
+          packages["./" + name + ".py"] = undefined;
         }
       }
       if (Object.keys(packages).length) {

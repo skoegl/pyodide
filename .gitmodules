@@ -1,0 +1,3 @@
+[submodule "packages/html5/html5"]
+	path = packages/html5/html5
+	url = git@github.com:viur-framework/html5.git
