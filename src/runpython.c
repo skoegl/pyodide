@@ -17,6 +17,7 @@ _runPython(char* code)
 {
   PyObject* py_code;
   py_code = PyUnicode_FromString(code);
+
   if (py_code == NULL) {
     return pythonexc2js();
   }
@@ -30,6 +31,7 @@ _runPython(char* code)
 
   int id = python2js(ret);
   Py_DECREF(ret);
+
   return id;
 }
 
@@ -44,14 +46,11 @@ _findImports(char* code)
 
   PyObject* ret = PyObject_CallFunctionObjArgs(find_imports, py_code, NULL);
 
-  printf("_findImports ret = %p\n", ret);
-
   if (ret == NULL) {
     return pythonexc2js();
   }
 
   int id = python2js(ret);
-  printf("id = %d\n", id);
   Py_DECREF(ret);
   return id;
 }
@@ -95,6 +94,8 @@ EM_JS(int, runpython_init_js, (), {
       var packages = {};
       for (var i = 0; i < jsimports.length; ++i) {
         var name = jsimports[i];
+        console.log("%d: %s", i, name);
+
         // clang-format off
         if (packageNames[name] !== undefined) {
           // clang-format on

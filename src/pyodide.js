@@ -102,6 +102,8 @@ var languagePluginLoader = new Promise((resolve, reject) => {
   }
 
   let _loadPackage = (names, messageCallback) => {
+    console.log("loadPackage %s", names);
+
     // DFS to find all dependencies of the requested packages
     let packages = self.pyodide._module.packages.dependencies;
     let loadedPackages = self.pyodide.loadedPackages;
@@ -113,6 +115,7 @@ var languagePluginLoader = new Promise((resolve, reject) => {
       const pkg = _uri_to_package_name(package_uri);
 
       console.log("pkg = %s", pkg);
+      console.log("package_uri = %s", package_uri);
 
       if (pkg == null) {
         console.error(`Invalid package name or URI '${package_uri}'`);
@@ -163,6 +166,7 @@ var languagePluginLoader = new Promise((resolve, reject) => {
 
     let promise = new Promise((resolve, reject) => {
       if (Object.keys(toLoad).length === 0) {
+        console.log("Finished loading packages!");
         resolve('No new packages to load');
         return;
       }
@@ -212,7 +216,8 @@ var languagePluginLoader = new Promise((resolve, reject) => {
         } else {
           scriptSrc = `${package_uri}`;
         }
-        loadScript(scriptSrc, () => {}, () => {
+
+        let packageFailureHandler = () => {
           // If the package_uri fails to load, call monitorRunDependencies twice
           // (so packageCounter will still hit 0 and finish loading), and remove
           // the package from toLoad so we don't mark it as loaded.
@@ -224,7 +229,34 @@ var languagePluginLoader = new Promise((resolve, reject) => {
           for (let i = 0; i < 2; i++) {
             self.pyodide._module.monitorRunDependencies();
           }
-        });
+        }
+
+        if( scriptSrc.endsWith(".py") ) {
+          loadPackagePromise.then(
+            fetch(scriptSrc)
+              .then((response) => response.text())
+              .then((code) => {
+                  console.log(`fetched ${scriptSrc} successfully`);
+
+                  let lol = self.pyodide.runPythonAsync(code)
+                    .then((x) => {
+                      console.log("runPythonAsync success!", x);
+                    })
+                    .catch((x) => {
+                      console.log("runPythonAsync failed!", x);
+                    });
+
+                  console.log("runPythonAsync returned", lol);
+
+                  resolve(); // <-- when this is available, the script runs "as expected", but with errors.
+                  return lol;
+                })
+              .catch(packageFailureHandler)
+            );
+        }
+        else {
+          loadScript(scriptSrc, () => {}, packageFailureHandler);
+        }
       }
 
       // We have to invalidate Python's import caches, or it won't

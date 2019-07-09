@@ -5,7 +5,7 @@ import socketserver
 
 os.chdir("build")
 
-PORT = 8080
+PORT = 8383
 
 '''
 class pyodideHttpServer(http.server.SimpleHTTPRequestHandler):

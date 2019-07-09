@@ -64,6 +64,7 @@ def find_imports(code):
         elif isinstance(node, ast.ImportFrom):
             name = node.module
             imports.add(name.split('.')[0])
+
     return list(imports)
 
 
