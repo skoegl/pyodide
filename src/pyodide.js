@@ -22,9 +22,6 @@ var languagePluginLoader = new Promise((resolve, reject) => {
 
   let _uri_to_package_name = (package_uri) => {
     // Generate a unique package name from URI
-    console.log(package_uri);
-    console.log(package_local_regexp);
-
     if (package_name_regexp.test(package_uri)) {
       return package_uri;
     } else if (package_uri_regexp.test(package_uri)) {
@@ -102,22 +99,16 @@ var languagePluginLoader = new Promise((resolve, reject) => {
   }
 
   let _loadPackage = (names, messageCallback) => {
-    console.log("loadPackage %s", names);
-
     // DFS to find all dependencies of the requested packages
     let packages = self.pyodide._module.packages.dependencies;
     let loadedPackages = self.pyodide.loadedPackages;
     let queue = [].concat(names || []);
     let toLoad = [];
-    let toFetch = {};
 
     while (queue.length) {
       let package_uri = queue.pop();
 
       const pkg = _uri_to_package_name(package_uri);
-
-      console.log("pkg = %s", pkg);
-      console.log("package_uri = %s", package_uri);
 
       if (pkg == null) {
         console.error(`Invalid package name or URI '${package_uri}'`);
@@ -143,19 +134,13 @@ var languagePluginLoader = new Promise((resolve, reject) => {
       } else {
         console.log(`Loading ${pkg} from ${package_uri}`);
 
-        if( package_uri.endsWith(".py") )
-          toFetch[pkg] = package_uri;
-        else
-        {
-          toLoad[pkg] = package_uri;
-
-          if (packages.hasOwnProperty(pkg)) {
-            packages[pkg].forEach((subpackage) => {
-              if (!(subpackage in loadedPackages) && !(subpackage in toLoad)) {
-                queue.push(subpackage);
-              }
-            });
-          }
+        toLoad[pkg] = package_uri;
+        if (packages.hasOwnProperty(pkg)) {
+          packages[pkg].forEach((subpackage) => {
+            if (!(subpackage in loadedPackages) && !(subpackage in toLoad)) {
+              queue.push(subpackage);
+            }
+          });
         }
       }
     }
@@ -172,7 +157,7 @@ var languagePluginLoader = new Promise((resolve, reject) => {
       return baseURL + path;
     };
 
-    let packagePromise = new Promise((resolve, reject) => {
+    let promise = new Promise((resolve, reject) => {
       if (Object.keys(toLoad).length === 0) {
         resolve('No new packages to load');
         return;
@@ -223,91 +208,50 @@ var languagePluginLoader = new Promise((resolve, reject) => {
         } else {
           scriptSrc = `${package_uri}`;
         }
-        loadScript(scriptSrc, () => {}, () => {
-          // If the package_uri fails to load, call monitorRunDependencies twice
-          // (so packageCounter will still hit 0 and finish loading), and remove
-          // the package from toLoad so we don't mark it as loaded.
-          console.error(`Couldn't load package from URL ${scriptSrc}`)
-          let index = toLoad.indexOf(pkg);
-          if (index !== -1) {
-            toLoad.splice(index, 1);
-          }
-          for (let i = 0; i < 2; i++) {
-            self.pyodide._module.monitorRunDependencies();
-          }
-        });
+
+        if( scriptSrc.endsWith(".py") ) {
+          fetch(scriptSrc)
+            .then((response) => response.text())
+            .then((code) => {
+              console.log(`fetched ${scriptSrc} successfully`);
+
+              self.pyodide._module.monitorRunDependencies();
+              self.pyodide._module.FS.writeFile(pkg + ".py", code);
+
+              self.pyodide.runPythonAsync(code, messageCallback, (resolve, reject) => { resolve(); })
+                .then(() => {
+                  console.log(`imported ${scriptSrc} successfully`);
+                });
+
+              self.pyodide._module.monitorRunDependencies();
+            });
+        } else {
+          loadScript(scriptSrc, () => {}, () => {
+            // If the package_uri fails to load, call monitorRunDependencies twice
+            // (so packageCounter will still hit 0 and finish loading), and remove
+            // the package from toLoad so we don't mark it as loaded.
+            console.error(`Couldn't load package from URL ${scriptSrc}`)
+            let index = toLoad.indexOf(pkg);
+            if (index !== -1) {
+              toLoad.splice(index, 1);
+            }
+            for (let i = 0; i < 2; i++) {
+              self.pyodide._module.monitorRunDependencies();
+            }
+          });
+        }
       }
 
       // We have to invalidate Python's import caches, or it won't
       // see the new files. This is done here so it happens in parallel
       // with the fetching over the network.
-      self.pyodide.runPython('import importlib as _importlib\n' +
-        '_importlib.invalidate_caches()\n');
+      self.pyodide.runPython(
+        'import importlib as _importlib\n' +
+        '_importlib.invalidate_caches()\n'
+      );
     });
 
-    let fetchPromise = new Promise((resolve, reject) => {
-      if (Object.keys(toFetch).length === 0) {
-        resolve('No new packages to fetch');
-        return;
-      }
-
-      const packageList = Array.from(Object.keys(toFetch)).join(', ');
-      if (messageCallback !== undefined) {
-        messageCallback(`Loading ${packageList}`);
-      }
-
-      // monitorRunDependencies is called at the beginning and the end of each
-      // fetch being loaded. We know we are done when it has been called
-      // exactly "toLoad * 2" times.
-      var packageCounter = Object.keys(toFetch).length * 2;
-
-      self.pyodide._module.monitorRunDependencies = () => {
-        packageCounter--;
-        if (packageCounter === 0) {
-          for (let pkg in toFetch) {
-            self.pyodide.loadedPackages[pkg] = toFetch[pkg];
-          }
-          delete self.pyodide._module.monitorRunDependencies;
-          self.removeEventListener('error', windowErrorHandler);
-          if (!isFirefox) {
-            preloadWasm().then(() => {resolve(`Loaded ${packageList}`)});
-          } else {
-            resolve(`Loaded ${packageList}`);
-          }
-        }
-      };
-
-      // Add a handler for any exceptions that are thrown in the process of
-      // loading a package
-      var windowErrorHandler = (err) => {
-        delete self.pyodide._module.monitorRunDependencies;
-        self.removeEventListener('error', windowErrorHandler);
-        // Set up a new Promise chain, since this one failed
-        loadPackagePromise = new Promise((resolve) => resolve());
-        reject(err.message);
-      };
-      self.addEventListener('error', windowErrorHandler);
-
-      for (let pkg in toFetch) {
-        console.log("toFetch", pkg);
-        let scriptSrc = toFetch[pkg];
-
-        fetch(scriptSrc)
-            .then((response) => response.text())
-            .then((code) => {
-              console.log(`fetched ${scriptSrc} successfully`);
-              self.pyodide._module.monitorRunDependencies();
-
-              self.pyodide.runPythonAsync(code, messageCallback)
-                .then(() => {
-                  console.log(`runPythonAsync successful for ${scriptSrc}!`);
-                  self.pyodide._module.monitorRunDependencies();
-                });
-            });
-      }
-    });
-
-    return Promise.all([packagePromise, fetchPromise]);
+    return promise;
   };
 
   let loadPackage = (names, messageCallback) => {

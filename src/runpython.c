@@ -71,7 +71,7 @@ EM_JS(int, runpython_init_js, (), {
     return Module._runPythonInternal(pycode);
   };
 
-  Module.runPythonAsync = function(code, messageCallback)
+  Module.runPythonAsync = function(code, messageCallback, runPythonInternal)
   {
     var pycode = allocate(intArrayFromString(code), 'i8', ALLOC_NORMAL);
 
@@ -79,19 +79,19 @@ EM_JS(int, runpython_init_js, (), {
     var jsimports = Module.hiwire_get_value(idimports);
     Module.hiwire_decref(idimports);
 
-    var internal = function(resolve, reject)
-    {
-      console.log(`run code ${code}`);
-
-      try {
-        resolve(Module._runPythonInternal(pycode));
-      } catch (e) {
-        console.log(`internal reject ${pycode}`);
-        reject(e);
-      }
-    };
-
-    console.log("jsimports", jsimports);
+    if( typeof runPythonInternal === "undefined" ) {
+      console.log("Using default runPythonInternal");
+      runPythonInternal = function(resolve, reject)
+      {
+        try {
+          resolve(Module._runPythonInternal(pycode));
+        } catch (e) {
+          reject(e);
+        }
+      };
+    }
+    else
+      console.log("Using custom runPythonInternal");
 
     if (jsimports.length) {
       var packageNames =
@@ -100,7 +100,6 @@ EM_JS(int, runpython_init_js, (), {
 
       for (var i = 0; i < jsimports.length; ++i) {
         var name = jsimports[i];
-        console.log("%d: %s", i, name);
 
         // clang-format off
         if (packageNames[name] !== undefined) {
@@ -113,15 +112,13 @@ EM_JS(int, runpython_init_js, (), {
       }
 
       if (Object.keys(packages).length) {
-        console.log("Returning Module.loadPackage.then()");
-        var runInternal = function() { console.log("runInternal"); return new Promise(internal); };
+        var runInternal = function() { return new Promise(runPythonInternal); };
         return Module.loadPackage(Object.keys(packages), messageCallback)
           .then(runInternal);
       }
     }
 
-    console.log("Returning Promise(internal)");
-    return new Promise(internal);
+    return new Promise(runPythonInternal);
   };
 });
 
