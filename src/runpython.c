@@ -81,17 +81,23 @@ EM_JS(int, runpython_init_js, (), {
 
     var internal = function(resolve, reject)
     {
+      console.log(`run code ${code}`);
+
       try {
         resolve(Module._runPythonInternal(pycode));
       } catch (e) {
+        console.log(`internal reject ${pycode}`);
         reject(e);
       }
     };
+
+    console.log("jsimports", jsimports);
 
     if (jsimports.length) {
       var packageNames =
         self.pyodide._module.packages.import_name_to_package_name;
       var packages = {};
+
       for (var i = 0; i < jsimports.length; ++i) {
         var name = jsimports[i];
         console.log("%d: %s", i, name);
@@ -105,12 +111,16 @@ EM_JS(int, runpython_init_js, (), {
           packages["./" + name + ".py"] = undefined;
         }
       }
+
       if (Object.keys(packages).length) {
-        var runInternal = function() { return new Promise(internal); };
+        console.log("Returning Module.loadPackage.then()");
+        var runInternal = function() { console.log("runInternal"); return new Promise(internal); };
         return Module.loadPackage(Object.keys(packages), messageCallback)
           .then(runInternal);
       }
     }
+
+    console.log("Returning Promise(internal)");
     return new Promise(internal);
   };
 });
