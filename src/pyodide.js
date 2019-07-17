@@ -115,7 +115,7 @@ var languagePluginLoader = new Promise((resolve, reject) => {
       else
       {
         let filename = pkg + ".py";
-        let url = "./" + filename;
+        let url = baseURL + filename;
 
         promises.push(
           new Promise((resolve, reject) => {
