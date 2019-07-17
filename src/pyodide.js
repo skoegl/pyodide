@@ -19,6 +19,7 @@ var languagePluginLoader = new Promise((resolve, reject) => {
       new RegExp('^https?://.*?(' + package_name_regexp + ').js$', 'i');
   var package_name_regexp = new RegExp('^' + package_ident_regexp + '$', 'i');
   var package_local_regexp = new RegExp('^\./(' + package_ident_regexp + ')\.py$');
+  var package_queue = new Array();
 
   let _uri_to_package_name = (package_uri) => {
     // Generate a unique package name from URI
@@ -33,9 +34,9 @@ var languagePluginLoader = new Promise((resolve, reject) => {
       // Get the regexp group corresponding to the package name
       //return match[1].replace(".", "/");
       return match[1];
-    } else {
-      return null;
     }
+
+    return null;
   };
 
   // clang-format off
@@ -98,7 +99,72 @@ var languagePluginLoader = new Promise((resolve, reject) => {
     }
   }
 
+  let _resolveImports = (imports) => {
+    var promises = [];
+    var packageNames = self.pyodide._module.packages.import_name_to_package_name;
+
+    console.log("_resolveImports", imports);
+
+    for( let i = 0; i < imports.length; i++ )
+    {
+      let name = imports[i];
+      let pkg = _uri_to_package_name(name);
+
+      if (packageNames[name] !== undefined)
+      {
+        package_queue[packageNames[name]] = undefined;
+      }
+      else
+      {
+        let filename = pkg + ".py";
+        let url = "./" + filename;
+
+        promises.push(
+          new Promise((resolve, reject) => {
+            fetch(url)
+              .then((response) => response.text())
+              .then((code) => {
+                console.log(`fetched ${name} from ${url} successfully`);
+                self.pyodide._module.FS.writeFile(filename, code);
+                package_queue[name] = undefined;
+
+                let imports = self.pyodide.parsePythonImports(code);
+
+                if (imports.length)
+                  _resolveImports(imports)
+                    .then(() => resolve()
+                  );
+                else
+                  resolve();
+              });
+            })
+        );
+      }
+    }
+
+    return Promise.all(promises);
+  };
+
   let _loadPackage = (names, messageCallback) => {
+    let promise = _resolveImports(names);
+
+    // We have to invalidate Python's import caches, or it won't
+    // see the new files. This is done here so it happens in parallel
+    // with the fetching over the network.
+    self.pyodide.runPython(
+      'import importlib as _importlib\n' +
+      '_importlib.invalidate_caches()\n'
+    );
+
+    return promise;
+
+    /*
+    new Promise((resolve, reject) => {
+
+    });
+
+
+
     // DFS to find all dependencies of the requested packages
     let packages = self.pyodide._module.packages.dependencies;
     let loadedPackages = self.pyodide.loadedPackages;
@@ -134,6 +200,9 @@ var languagePluginLoader = new Promise((resolve, reject) => {
       } else {
         console.log(`Loading ${pkg} from ${package_uri}`);
 
+        if( package_uri.endsWith(".py") )
+
+
         toLoad[pkg] = package_uri;
         if (packages.hasOwnProperty(pkg)) {
           packages[pkg].forEach((subpackage) => {
@@ -141,6 +210,8 @@ var languagePluginLoader = new Promise((resolve, reject) => {
               queue.push(subpackage);
             }
           });
+        } else {
+          console.error(`Unknown package '${pkg}'`);
         }
       }
     }
@@ -210,21 +281,7 @@ var languagePluginLoader = new Promise((resolve, reject) => {
         }
 
         if( scriptSrc.endsWith(".py") ) {
-          fetch(scriptSrc)
-            .then((response) => response.text())
-            .then((code) => {
-              console.log(`fetched ${scriptSrc} successfully`);
-
-              self.pyodide._module.monitorRunDependencies();
-              self.pyodide._module.FS.writeFile(pkg + ".py", code);
-
-              self.pyodide.runPythonAsync(code, messageCallback, (resolve, reject) => { resolve(); })
-                .then(() => {
-                  console.log(`imported ${scriptSrc} successfully`);
-                });
-
-              self.pyodide._module.monitorRunDependencies();
-            });
+          self.pyodide.fetchPython(pkg + ".py", scriptSrc);
         } else {
           loadScript(scriptSrc, () => {}, () => {
             // If the package_uri fails to load, call monitorRunDependencies twice
@@ -252,6 +309,7 @@ var languagePluginLoader = new Promise((resolve, reject) => {
     });
 
     return promise;
+    */
   };
 
   let loadPackage = (names, messageCallback) => {
@@ -299,6 +357,7 @@ var languagePluginLoader = new Promise((resolve, reject) => {
     'pyimport',
     'repr',
     'runPython',
+    'parsePythonImports',
     'runPythonAsync',
     'checkABI',
     'version',

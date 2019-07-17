@@ -71,55 +71,40 @@ EM_JS(int, runpython_init_js, (), {
     return Module._runPythonInternal(pycode);
   };
 
-  Module.runPythonAsync = function(code, messageCallback, runPythonInternal)
+  Module.parsePythonImports = function(code)
   {
-    var pycode = allocate(intArrayFromString(code), 'i8', ALLOC_NORMAL);
+    if( typeof code === "string" )
+      code = allocate(intArrayFromString(code), 'i8', ALLOC_NORMAL);
 
-    var idimports = Module.__findImports(pycode);
+    var idimports = Module.__findImports(code);
     var jsimports = Module.hiwire_get_value(idimports);
     Module.hiwire_decref(idimports);
 
-    if( typeof runPythonInternal === "undefined" ) {
-      console.log("Using default runPythonInternal");
-      runPythonInternal = function(resolve, reject)
-      {
-        try {
-          resolve(Module._runPythonInternal(pycode));
-        } catch (e) {
-          reject(e);
-        }
-      };
-    }
-    else
-      console.log("Using custom runPythonInternal");
+    return jsimports;
+  };
+
+  Module.runPythonAsync = function(code, messageCallback)
+  {
+    var pycode = allocate(intArrayFromString(code), 'i8', ALLOC_NORMAL);
+    let jsimports = Module.parsePythonImports(pycode);
+
+    let internal = function(resolve, reject)
+    {
+      try {
+        resolve(Module._runPythonInternal(pycode));
+      } catch (e) {
+        reject(e);
+      }
+    };
 
     if (jsimports.length) {
-      var packageNames =
-        self.pyodide._module.packages.import_name_to_package_name;
-      var packages = {};
-
-      for (var i = 0; i < jsimports.length; ++i) {
-        var name = jsimports[i];
-
-        // clang-format off
-        if (packageNames[name] !== undefined) {
-          // clang-format on
-          packages[packageNames[name]] = undefined;
-        }
-        else {
-          packages["./" + name + ".py"] = undefined;
-        }
-      }
-
-      if (Object.keys(packages).length) {
-        var runInternal = function() { return new Promise(runPythonInternal); };
-        return Module.loadPackage(Object.keys(packages), messageCallback)
-          .then(runInternal);
-      }
+      return Module.loadPackage(jsimports, messageCallback)
+        .then(() => new Promise(internal) );
     }
 
-    return new Promise(runPythonInternal);
+    return new Promise(internal);
   };
+
 });
 
 int
