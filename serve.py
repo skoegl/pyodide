@@ -1,35 +1,28 @@
 #!/usr/bin/env python3
-import os
-import http.server
-import socketserver
+import os, socketserver
+from http.server import SimpleHTTPRequestHandler
 
 os.chdir("build")
 
 PORT = 8383
 
-'''
-class pyodideHttpServer(http.server.SimpleHTTPRequestHandler):
+
+class pyodideHttpServer(SimpleHTTPRequestHandler):
 
     def __init__(self, request, client_address, server):
         self.extensions_map.update({
             '.wasm': 'application/wasm',
-            #    '.data': 'application/wasm',
         })
 
-        print(dir(request))
-        return super().__init__(request, client_address, server)
-'''
+        super().__init__(request, client_address, server)
+
+    def end_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        #self.send_header("Access-Control-Allow-Origin", "https://phorward.info/tmp/pyodide")
+        super().end_headers()
 
 
-Handler = http.server.SimpleHTTPRequestHandler
-
-Handler.extensions_map.update({
-    '.wasm': 'application/wasm',
-#    '.data': 'application/wasm',
-})
-
-#for i, j in sorted(Handler.extensions_map.items(), key=lambda x: x[0]):
-#    print(i, j)
+Handler = pyodideHttpServer
 
 socketserver.TCPServer.allow_reuse_address = True
 with socketserver.TCPServer(("", PORT), Handler) as httpd:
