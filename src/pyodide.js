@@ -382,8 +382,17 @@ var languagePluginLoader = new Promise((resolve, reject) => {
   ////////////////////////////////////////////////////////////
   // Rearrange namespace for public API
   let PUBLIC_API = [
-    'globals', 'loadPackage', 'loadedPackages', 'pyimport', 'repr', 'runPython',
-    'parsePythonImports', 'runPythonAsync', 'checkABI', 'version', 'remotePath'
+    'globals',
+    'loadPackage',
+    'loadedPackages',
+    'pyimport',
+    'repr',
+    'runPython',
+    'parsePythonImports',
+    'runPythonAsync',
+    'checkABI',
+    'version',
+    'remotePath',
   ];
 
   function makePublicAPI(module, public_api) {
