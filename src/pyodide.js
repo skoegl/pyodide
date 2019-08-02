@@ -108,75 +108,78 @@ var languagePluginLoader = new Promise((resolve, reject) => {
     if (typeof prefix === "undefined")
       prefix = "";
 
-    //console.debug(prefix || "(null)", imports);
+    // console.debug(prefix || "(null)", imports);
 
     for (let name of imports) {
       let pkg = _uri_to_package_name(name);
 
       if (packageNames[name] !== undefined) {
         packagesToLoad[packageNames[name]] = undefined;
-      } else if(self.pyodide.remotePath.length) {
+      } else if (self.pyodide.remotePath.length) {
         let remotePath = self.pyodide.remotePath.slice();
 
         function fetchModule() {
           let remoteURL = remotePath.shift();
+          if (remoteURL === "/")
+            remoteURL = baseURL;
+
           remoteURL = remoteURL.substr(0, remoteURL.lastIndexOf('/')) + '/';
 
           let filename = pkg + ".py";
           let url = remoteURL + prefix + filename;
 
           return new Promise((resolve, reject) => {
-            fetch(url, {})
-              .then((response) => {
-                if (response.status == 200)
-                  return response.text().then((code) => {
-                    console.log(`fetched ${name} from ${url} successfully`);
-                    self.pyodide._module.FS.writeFile(prefix + filename, code);
+            fetch(url, {}).then((response) => {
+              if (response.status == 200)
+                return response.text().then((code) => {
+                  console.log(`fetched ${name} from ${url} successfully`);
+                  self.pyodide._module.FS.writeFile(prefix + filename, code);
 
-                    let imports = self.pyodide.parsePythonImports(code, prefix);
+                  let imports = self.pyodide.parsePythonImports(code, prefix);
 
-                    if (imports.length)
-                      _resolveImports(imports, prefix).then(() => resolve());
-                    else
-                      resolve();
-                  });
+                  if (imports.length)
+                    _resolveImports(imports, prefix).then(() => resolve());
+                  else
+                    resolve();
+                });
 
               let sfilename = "__init__.py";
               let sprefix = prefix + pkg + "/";
               var surl = remoteURL + sprefix + sfilename;
 
-              //console.debug(`${url} not found, checking for ${surl}`);
+              // console.debug(`${url} not found, checking for ${surl}`);
 
-              return fetch(surl, {})
-                .then((response) => {
-                  if (response.status == 200)
-                    return response.text().then((code) => {
-                      console.log(`fetched ${sfilename} from ${surl} successfully`);
+              return fetch(surl, {}).then((response) => {
+                if (response.status == 200)
+                  return response.text().then((code) => {
+                    console.log(
+                        `fetched ${sfilename} from ${surl} successfully`);
 
-                      let notrailPrefix = sprefix.substr(0, sprefix.length - 1);
+                    let notrailPrefix = sprefix.substr(0, sprefix.length - 1);
 
-                      self.pyodide._module.FS.mkdir(
+                    self.pyodide._module.FS.mkdir(
                         // a trailing "/" does not work here...
                         notrailPrefix);
-                      self.pyodide._module.FS.writeFile(sprefix + sfilename, code);
+                    self.pyodide._module.FS.writeFile(sprefix + sfilename,
+                                                      code);
 
-                      let imports =
+                    let imports =
                         self.pyodide.parsePythonImports(code, notrailPrefix);
 
-                      if (imports.length) {
-                        _resolveImports(imports, sprefix).then(() => resolve());
-                      }
-                      else {
-                        resolve();
-                      }
-                    });
+                    if (imports.length) {
+                      _resolveImports(imports, sprefix).then(() => resolve());
+                    } else {
+                      resolve();
+                    }
+                  });
 
                 // Try another remote path?
-                if( remotePath.length ) {
+                if (remotePath.length) {
                   fetchModule().then(() => resolve());
                 } else {
-                  resolve(); //Mark this promise as resolved, although no file was fetched. Python will do the rest.
-                  //reject(`Unable to locate package ${pkg}`)
+                  resolve(); // Mark this promise as resolved, although no file
+                             // was fetched. Python will do the rest.
+                  // reject(`Unable to locate package ${pkg}`)
                 }
               });
             });
@@ -379,17 +382,8 @@ var languagePluginLoader = new Promise((resolve, reject) => {
   ////////////////////////////////////////////////////////////
   // Rearrange namespace for public API
   let PUBLIC_API = [
-    'globals',
-    'loadPackage',
-    'loadedPackages',
-    'pyimport',
-    'repr',
-    'runPython',
-    'parsePythonImports',
-    'runPythonAsync',
-    'checkABI',
-    'version',
-    'remotePath'
+    'globals', 'loadPackage', 'loadedPackages', 'pyimport', 'repr', 'runPython',
+    'parsePythonImports', 'runPythonAsync', 'checkABI', 'version', 'remotePath'
   ];
 
   function makePublicAPI(module, public_api) {
