@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-import os, socketserver
+import os
+import socketserver
 from http.server import SimpleHTTPRequestHandler
 
+PORT = 8181
 os.chdir("build")
-
-PORT = 8383
-
 
 class pyodideHttpServer(SimpleHTTPRequestHandler):
 
@@ -18,7 +17,6 @@ class pyodideHttpServer(SimpleHTTPRequestHandler):
 
     def end_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
-        #self.send_header("Access-Control-Allow-Origin", "https://phorward.info/tmp/pyodide")
         super().end_headers()
 
 
