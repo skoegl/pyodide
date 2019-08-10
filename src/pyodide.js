@@ -18,8 +18,6 @@ var languagePluginLoader = new Promise((resolve, reject) => {
   var package_uri_regexp =
       new RegExp('^https?://.*?(' + package_name_regexp + ').js$', 'i');
   var package_name_regexp = new RegExp('^' + package_ident_regexp + '$', 'i');
-  var package_local_regexp =
-      new RegExp('^\./(' + package_ident_regexp + ')\.py$');
   var packagesToLoad = {};
 
   let _uri_to_package_name = (package_uri) => {
@@ -28,10 +26,6 @@ var languagePluginLoader = new Promise((resolve, reject) => {
       return package_uri;
     } else if (package_uri_regexp.test(package_uri)) {
       let match = package_uri_regexp.exec(package_uri);
-      // Get the regexp group corresponding to the package name
-      return match[1];
-    } else if (package_local_regexp.test(package_uri)) {
-      let match = package_local_regexp.exec(package_uri);
       // Get the regexp group corresponding to the package name
       return match[1];
     }
@@ -222,6 +216,9 @@ var languagePluginLoader = new Promise((resolve, reject) => {
       let queue = [].concat(Object.keys(packagesToLoad) || []);
       let toLoad = [];
 
+      // Clear packagesToLoad for later imports
+      packagesToLoad = {};
+
       while (queue.length) {
         let package_uri = queue.pop();
 
@@ -330,9 +327,9 @@ var languagePluginLoader = new Promise((resolve, reject) => {
           }
 
           loadScript(scriptSrc, () => {}, () => {
-            // If the package_uri fails to load, call monitorRunDependencies twice
-            // (so packageCounter will still hit 0 and finish loading), and remove
-            // the package from toLoad so we don't mark it as loaded.
+            // If the package_uri fails to load, call monitorRunDependencies
+            // twice (so packageCounter will still hit 0 and finish loading),
+            // and remove the package from toLoad so we don't mark it as loaded.
             console.error(`Couldn't load package from URL ${scriptSrc}`)
             let index = toLoad.indexOf(pkg);
             if (index !== -1) {
@@ -343,16 +340,16 @@ var languagePluginLoader = new Promise((resolve, reject) => {
             }
           });
         }
+
+        // We have to invalidate Python's import caches, or it won't
+        // see the new files. This is done here so it happens in parallel
+        // with the fetching over the network.
+        self.pyodide.runPython('import importlib as _importlib\n' +
+                               '_importlib.invalidate_caches()\n');
       });
 
       return promise;
     });
-
-    // We have to invalidate Python's import caches, or it won't
-    // see the new files. This is done here so it happens in parallel
-    // with the fetching over the network.
-    self.pyodide.runPython('import importlib as _importlib\n' +
-                           '_importlib.invalidate_caches()\n');
 
     return promise;
   };
