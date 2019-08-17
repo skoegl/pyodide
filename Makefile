@@ -48,6 +48,12 @@ LDFLAGS=\
 SIX_ROOT=six/six-1.11.0/build/lib
 SIX_LIBS=$(SIX_ROOT)/six.py
 
+JEDI_ROOT=jedi/jedi-0.15.1/jedi
+JEDI_LIBS=$(JEDI_ROOT)/__init__.py
+
+PARSO_ROOT=parso/parso-0.5.1/parso
+PARSO_LIBS=$(PARSO_ROOT)/__init__.py
+
 SITEPACKAGES=root/lib/python$(PYMINOR)/site-packages
 
 all: build/pyodide.asm.js \
@@ -70,6 +76,10 @@ build/pyodide.asm.js: src/main.bc src/jsimport.bc src/jsproxy.bc src/js2python.b
 	$(CXX) -s EXPORT_NAME="'pyodide'" -o build/pyodide.asm.html $(filter %.bc,$^) \
 	  $(LDFLAGS) -s FORCE_FILESYSTEM=1
 	rm build/pyodide.asm.html
+
+
+env:
+	env
 
 
 build/pyodide.asm.data: root/.built
@@ -137,6 +147,8 @@ clean:
 	rm -fr src/*.bc
 	make -C packages clean
 	make -C six clean
+	make -C jedi clean
+	make -C parso clean
 	echo "The Emsdk, CPython and CLAPACK are not cleaned. cd into those directories to do so."
 
 
@@ -159,6 +171,8 @@ build/test.data: $(CPYTHONLIB)
 root/.built: \
 		$(CPYTHONLIB) \
 		$(SIX_LIBS) \
+    $(JEDI_LIBS) \
+		$(PARSO_LIBS) \
 		src/sitecustomize.py \
 		src/webbrowser.py \
 		src/pyodide.py \
@@ -167,6 +181,8 @@ root/.built: \
 	mkdir -p root/lib
 	cp -a $(CPYTHONLIB)/ root/lib
 	cp $(SIX_LIBS) $(SITEPACKAGES)
+	cp -r $(JEDI_ROOT) $(SITEPACKAGES)
+	cp -r $(PARSO_ROOT) $(SITEPACKAGES)
 	cp src/sitecustomize.py $(SITEPACKAGES)
 	cp src/webbrowser.py root/lib/python$(PYMINOR)
 	cp src/_testcapi.py	root/lib/python$(PYMINOR)
@@ -185,9 +201,9 @@ $(PYODIDE_EMCC):
 	mkdir -p $(PYODIDE_ROOT)/ccache ; \
 	if test ! -h $@; then \
 		if hash ccache &>/dev/null; then \
-    		ln -s `which ccache` $@ ; \
+			ln -s `which ccache` $@ ; \
 		else \
-    		ln -s emsdk/emsdk/emscripten/tag-$(EMSCRIPTEN_VERSION)/emcc $@; \
+	 		ln -s emsdk/emsdk/emscripten/tag-$(EMSCRIPTEN_VERSION)/emcc $@; \
 		fi; \
 	fi
 
@@ -198,9 +214,9 @@ $(PYODIDE_CXX):
 		if hash ccache &>/dev/null; then \
 		    ln -s `which ccache` $@ ; \
 		else \
-    		ln -s emsdk/emsdk/emscripten/tag-$(EMSCRIPTEN_VERSION)/em++ $@; \
+	  		ln -s emsdk/emsdk/emscripten/tag-$(EMSCRIPTEN_VERSION)/em++ $@; \
 		fi; \
-  	fi
+	fi
 
 
 $(CPYTHONLIB): emsdk/emsdk/.complete $(PYODIDE_EMCC) $(PYODIDE_CXX)
@@ -213,6 +229,14 @@ $(LZ4LIB):
 
 $(SIX_LIBS): $(CPYTHONLIB)
 	make -C six
+
+
+$(JEDI_LIBS): $(CPYTHONLIB)
+	make -C jedi
+
+
+$(PARSO_LIBS): $(CPYTHONLIB)
+	make -C parso
 
 
 $(CLAPACK): $(CPYTHONLIB)
