@@ -127,10 +127,6 @@ test: all
 	pytest test packages pyodide_build -v
 
 
-serve: all
-	./serve.py
-
-
 lint:
 	flake8 src test tools pyodide_build benchmark
 	clang-format -output-replacements-xml src/*.c src/*.h src/*.js | (! grep '<replacement ')
