@@ -11,14 +11,16 @@ var languagePluginLoader = new Promise((resolve, reject) => {
 
   ////////////////////////////////////////////////////////////
   // Package loading
-  let loadedPackages = new Array();
+  let loadedPackages = [];
+  let loadedModules = [];
+  var packagesToLoad = {};
   var loadPackagePromise = new Promise((resolve) => resolve());
+
   // Regexp for validating package name and URI
   var package_ident_regexp = '[a-z0-9_][a-z0-9_\-]*';
   var package_uri_regexp =
-      new RegExp('^https?://.*?(' + package_name_regexp + ').js$', 'i');
+      new RegExp('^https?://.*?(' + package_ident_regexp + ').js$', 'i');
   var package_name_regexp = new RegExp('^' + package_ident_regexp + '$', 'i');
-  var packagesToLoad = {};
 
   let _uri_to_package_name = (package_uri) => {
     // Generate a unique package name from URI
@@ -94,7 +96,6 @@ var languagePluginLoader = new Promise((resolve, reject) => {
   }
 
   // Recursively resolve imports for Python modules being fetched
-  let _remoteModules = [];
   let _pythonPath = "";
 
   let _resolveImports = (imports, prefix) => {
@@ -109,26 +110,41 @@ var languagePluginLoader = new Promise((resolve, reject) => {
     for (let name of imports) {
       let pkg = _uri_to_package_name(name);
 
-      if (self.pyodide._module.packages.import_name_to_package_name[name] !==
-          undefined) {
-        packagesToLoad[self.pyodide._module.packages
-                           .import_name_to_package_name[name]] = undefined;
-      } else if (self.pyodide._module.packages.dependencies[name] !==
-                 undefined) {
+      // Check if this is a known package
+      if (
+          // Invalid pkg or disabled remotePath feature
+          !self.pyodide.remotePath.length || pkg == null ||
+
+          // Allow for both import names...
+          self.pyodide._module.packages.import_name_to_package_name[name] !==
+              undefined ||
+
+          // ...as well as direct package names
+          self.pyodide._module.packages.dependencies[name] !== undefined ||
+
+          // and package URIs
+          package_uri_regexp.test(name)) {
+
         packagesToLoad[name] = undefined;
+
       } else if (self.pyodide.remotePath.length) {
 
-        // Check if this module with the same prefix is in _remoteModules,
+        // Check if this module with the same prefix is in loadedModules,
         // to avoid multiple fetching of the same module from different
         // sub-modules.
-        if (_remoteModules.indexOf(prefix + pkg) >= 0) {
+        if (loadedModules.indexOf(prefix + pkg) >= 0) {
           continue;
         }
 
-        _remoteModules.push(prefix + pkg);
+        loadedModules.push(prefix + pkg);
+
+        var remotePath;
 
         // Fetch modules per entry configured in remotePath
-        let remotePath = self.pyodide.remotePath.slice();
+        if (!Array.isArray(self.pyodide.remotePath))
+          remotePath = [ self.pyodide.remotePath ]; // Convert into an array
+        else
+          remotePath = self.pyodide.remotePath.slice();
 
         function fetchModule() {
           let remoteURL = remotePath.shift();
@@ -149,8 +165,8 @@ var languagePluginLoader = new Promise((resolve, reject) => {
             fetch(url, {}).then((response) => {
               if (response.status === 200)
                 return response.text().then((code) => {
-                  console.log(`fetched ${name} from ${url} successfully, ` +
-                              `saving to ${path}`);
+                  console.debug(`fetched ${name} from ${url} successfully, ` +
+                                `saving to ${path}`);
 
                   self.pyodide._module.FS.writeFile(path, code);
 
@@ -172,11 +188,9 @@ var languagePluginLoader = new Promise((resolve, reject) => {
               return fetch(fUrl, {}).then((response) => {
                 if (response.status === 200)
                   return response.text().then((code) => {
-                    console.log(
+                    console.debug(
                         `fetched ${fFilename} from ${fUrl} successfully, ` +
                         `saving to ${fPath}`);
-
-                    console.debug(`${self.pyodide._pythonPath + fPrefix}`);
 
                     self.pyodide._module.FS.mkdir(self.pyodide._pythonPath +
                                                   fPrefix);
@@ -196,6 +210,8 @@ var languagePluginLoader = new Promise((resolve, reject) => {
                 if (remotePath.length) {
                   fetchModule().then(() => resolve());
                 } else {
+                  packagesToLoad[name] = undefined;
+
                   resolve(); // Mark this promise as resolved, although no file
                              // was fetched. Python will do the rest.
 
@@ -221,6 +237,15 @@ var languagePluginLoader = new Promise((resolve, reject) => {
 
       let queue = [].concat(Object.keys(packagesToLoad) || []);
       let toLoad = [];
+
+      if (queue.length === 0) {
+        // Invalidate Python's import caches also here, in case remotePath
+        // feature imported something...
+        self.pyodide.runPython('import importlib as _importlib\n' +
+                               '_importlib.invalidate_caches()\n');
+        resolve();
+        return;
+      }
 
       // Clear packagesToLoad for later imports
       packagesToLoad = {};
@@ -282,11 +307,6 @@ var languagePluginLoader = new Promise((resolve, reject) => {
 
       let promise = new Promise((resolve, reject) => {
         if (Object.keys(toLoad).length === 0) {
-          // Invalidate Python's import caches also here, in case remotePath
-          // feature imported something...
-          self.pyodide.runPython('import importlib as _importlib\n' +
-                                 '_importlib.invalidate_caches()\n');
-
           resolve('No new packages to load');
           return;
         }
