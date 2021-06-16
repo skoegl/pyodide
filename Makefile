@@ -17,9 +17,7 @@ all: check \
 	build/pyodide.asm.js \
 	build/pyodide.js \
 	build/console.html \
-	build/test.data \
 	build/packages.json \
-	build/test.html \
 	build/webworker.js \
 	build/webworker_dev.js
 	echo -e "\nSUCCESS!"
@@ -37,19 +35,13 @@ build/pyodide.asm.js: \
 	src/core/pyproxy.o \
 	src/core/python2js_buffer.o \
 	src/core/python2js.o \
-	src/pystone.py \
-	src/_testcapi.py \
-	src/webbrowser.py \
 	$(wildcard src/pyodide-py/pyodide/*.py) \
 	$(CPYTHONLIB)
 	date +"[%F %T] Building pyodide.asm.js..."
 	[ -d build ] || mkdir build
-	$(CXX) -s EXPORT_NAME="'_createPyodideModule'" -o build/pyodide.asm.js $(filter %.o,$^) \
+	$(CXX) -v -s EXPORT_NAME="'_createPyodideModule'" -o build/pyodide.asm.js $(filter %.o,$^) \
 		$(MAIN_MODULE_LDFLAGS) -s FORCE_FILESYSTEM=1 \
 		--preload-file $(CPYTHONLIB)@/lib/python$(PYMINOR) \
-		--preload-file src/webbrowser.py@/lib/python$(PYMINOR)/webbrowser.py \
-		--preload-file src/_testcapi.py@/lib/python$(PYMINOR)/_testcapi.py \
-		--preload-file src/pystone.py@/lib/python$(PYMINOR)/pystone.py \
 		--preload-file src/pyodide-py/pyodide@/lib/python$(PYMINOR)/site-packages/pyodide \
 		--preload-file src/pyodide-py/_pyodide@/lib/python$(PYMINOR)/site-packages/_pyodide \
 		--exclude-file "*__pycache__*" \
@@ -136,6 +128,10 @@ clean:
 	make -C packages clean
 	echo "The Emsdk, CPython are not cleaned. cd into those directories to do so."
 
+clean-py: clean
+	make -C cpython clean
+	#rm -fr cpython/build
+
 clean-all: clean
 	make -C emsdk clean
 	make -C cpython clean
@@ -179,7 +175,7 @@ emsdk/emsdk/.complete:
 
 FORCE:
 
-check:
+check: $(UGLIFYJS)
 	./tools/dependency-check.sh
 
 minimal :
@@ -189,3 +185,11 @@ debug :
 	EXTRA_CFLAGS+=" -D DEBUG_F" \
 	PYODIDE_PACKAGES+=", micropip, pyparsing, pytz, packaging, kiwisolver, " \
 	make
+
+nano: FORCE
+	# smallest version for flare
+	CURRENT_MODE="_nano" PYODIDE_PACKAGES="False" make
+
+pico: FORCE
+	# smallest possible python version
+	CURRENT_MODE="_pico" PYODIDE_PACKAGES="False" make

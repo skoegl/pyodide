@@ -8,6 +8,11 @@
 [![Build Status](https://circleci.com/gh/pyodide/pyodide.png)](https://circleci.com/gh/pyodide/pyodide)
 [![Documentation Status](https://readthedocs.org/projects/pyodide/badge/?version=stable)](https://pyodide.readthedocs.io/?badge=stable)
 
+## ⚠⚠⚠ WARNING ⚠⚠⚠
+This Pyodide version does not include full Python and also no micropip! It is used to build webapps with Python. For this purpose the [flare](https://github.com/viur-framework/flare) framework can be used.
+The goal of this version is to create a small version that meets the requirements of the flare framework.
+
+
 Python with the scientific stack, compiled to WebAssembly.
 
 ## What is Pyodide?

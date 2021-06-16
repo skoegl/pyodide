@@ -25,7 +25,10 @@ export PYODIDE=1
 export PYODIDE_PACKAGE_ABI=1
 export EM_COMPILER_WRAPPER=ccache
 
-export OPTFLAGS=-O2
+# default == full python, nano == webframework subset, pico == only libs that are nessesary to load pyodide
+export PYTHON_MODE=$(CURRENT_MODE)
+
+export OPTFLAGS=-Os
 export CFLAGS_BASE=\
 	$(OPTFLAGS) \
 	-g \
@@ -47,16 +50,14 @@ export LDFLAGS_BASE=\
 export CXXFLAGS_BASE=
 
 export SIDE_MODULE_LDFLAGS=	$(LDFLAGS_BASE) -s SIDE_MODULE=1
-export MAIN_MODULE_LDFLAGS= $(LDFLAGS_BASE) -s MAIN_MODULE=1 \
+export MAIN_MODULE_LDFLAGS= $(LDFLAGS_BASE) \
 	-s EXPORTED_FUNCTIONS='["___cxa_guard_acquire", "__ZNSt3__28ios_base4initEPv", "_main"]' \
 	$(CPYTHONROOT)/installs/python-$(PYVERSION)/lib/libpython$(PYMINOR).a \
 	-s TOTAL_MEMORY=20971520 \
 	-s ALLOW_MEMORY_GROWTH=1 \
-    --use-preload-plugins \
-	-s USE_FREETYPE=1 \
+	--use-preload-plugins \
+	-s USE_FREETYPE=0 \
 	-s USE_LIBPNG=1 \
-	-L$(wildcard $(CPYTHONROOT)/build/sqlite*/.libs) -lsqlite3 \
-	$(wildcard $(CPYTHONROOT)/build/bzip2*/libbz2.a) \
 	-lstdc++ \
 	--memory-init-file 0 \
 
@@ -70,7 +71,7 @@ export MAIN_MODULE_CFLAGS= $(CFLAGS_BASE) \
     	-Werror=sometimes-uninitialized \
     	-Werror=int-conversion \
     	-Werror=incompatible-pointer-types \
-		-I$(PYTHONINCLUDE) 
+		-I$(PYTHONINCLUDE)
 
 
 .output_vars:

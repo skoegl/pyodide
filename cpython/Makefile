@@ -25,11 +25,10 @@ BZIP2TARBALL=$(ROOT)/downloads/bzip2-1.0.2.tar.gz
 BZIP2BUILD=$(ROOT)/build/bzip2-1.0.2
 BZIP2URL=https://sourceware.org/pub/bzip2/bzip2-1.0.2.tar.gz
 
-
 all: $(INSTALL)/lib/$(LIB)
 
 
-$(INSTALL)/lib/$(LIB): $(BUILD)/$(LIB) remove_modules.txt
+$(INSTALL)/lib/$(LIB): $(BUILD)/$(LIB) remove_modules$(PYTHON_MODE).txt
 	( \
 		cd $(BUILD); \
 		sed -i -e 's/libinstall:.*/libinstall:/' Makefile; \
@@ -43,7 +42,8 @@ $(INSTALL)/lib/$(LIB): $(BUILD)/$(LIB) remove_modules.txt
 	mv `cat pybuilddir.txt`/$(SYSCONFIG_NAME).py $(INSTALL)/lib/python$(PYMINOR)/
 	rmdir `cat pybuilddir.txt`
 	rm pybuilddir.txt
-	cd $(INSTALL)/lib/python$(PYMINOR)/ && rm -rf `cat $(ROOT)/remove_modules.txt`
+	cd $(INSTALL)/lib/python$(PYMINOR)/ && rm -rf `cat $(ROOT)/remove_modules$(PYTHON_MODE).txt`
+	for py in `find $(INSTALL)/lib/python$(PYMINOR) -name "*.py"`; do echo "Minifying $${py}..."; pyminify --remove-literal-statements $${py} > $${py}.min; mv $${py}.min $${py}; done
 
 
 clean:
@@ -112,9 +112,12 @@ $(BUILD)/Makefile: $(BUILD)/.patched $(ZLIBBUILD)/.configured $(SQLITEBUILD)/lib
 	( \
 		cd $(BUILD); \
 		CONFIG_SITE=./config.site READELF=true emconfigure \
-		  ./configure \
+			  ./configure \
+			  LDFLAGS="-static" \
+			  OPT="-fwrapv -Os -Wall" \
 			  CFLAGS="${PYTHON_CFLAGS}" \
-			  CPPFLAGS="-I$(SQLITEBUILD) -I$(BZIP2BUILD) -I$(ZLIBBUILD)" \
+			  CPPFLAGS=$(if $(PYTHON_MODE),"-I$(ZLIBBUILD)","-I$(SQLITEBUILD) -I$(BZIP2BUILD) -I$(ZLIBBUILD)") \
+			  --without-doc-strings \
 			  --without-pymalloc \
 			  --disable-shared \
 			  --disable-ipv6 \
@@ -125,8 +128,8 @@ $(BUILD)/Makefile: $(BUILD)/.patched $(ZLIBBUILD)/.configured $(SQLITEBUILD)/lib
 	)
 
 
-$(BUILD)/$(LIB): $(BUILD)/Makefile Setup.local
-	cp Setup.local $(BUILD)/Modules/
+$(BUILD)/$(LIB): $(BUILD)/Makefile Setup$(PYTHON_MODE).local
+	cp Setup$(PYTHON_MODE).local $(BUILD)/Modules/Setup.local
 	cat pyconfig.undefs.h >> $(BUILD)/pyconfig.h
 	( \
 		cd $(BUILD); \

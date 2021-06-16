@@ -122,11 +122,15 @@ def generate_dependency_graph(
 
     pkg_map: Dict[str, Package] = {}
 
-    packages: Optional[Set[str]] = common._parse_package_subset(package_list)
-    if packages is None:
-        packages = set(
-            str(x) for x in packages_dir.iterdir() if (x / "meta.yaml").is_file()
-        )
+    if package_list == "False":
+        packages = []
+    else:
+        packages: Optional[Set[str]] = common._parse_package_subset(package_list)
+
+        if packages is None:
+            packages = set(
+                str(x) for x in packages_dir.iterdir() if (x / "meta.yaml").is_file()
+            )
 
     while packages:
         pkgname = packages.pop()
@@ -210,8 +214,8 @@ def build_from_graph(pkg_map: Dict[str, Package], outputdir: Path, args) -> None
 
 def build_packages(packages_dir: Path, outputdir: Path, args) -> None:
     pkg_map = generate_dependency_graph(packages_dir, args.only)
-
-    build_from_graph(pkg_map, outputdir, args)
+    if args.only!="False":
+        build_from_graph(pkg_map, outputdir, args)
 
     # Build package.json data. The "test" package is built in a different way,
     # so we hardcode its existence here.
