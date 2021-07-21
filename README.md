@@ -20,7 +20,7 @@ Python with the scientific stack, compiled to WebAssembly.
 Pyodide may be used in any context where you want to run Python inside a web
 browser.
 
-Pyodide brings the Python 3.8 runtime to the browser via WebAssembly, along with
+Pyodide brings the Python 3.9 runtime to the browser via WebAssembly, along with
 the Python scientific stack including NumPy, Pandas, Matplotlib, SciPy, and
 scikit-learn. The [packages directory](packages) lists over 75 packages which
 are currently available. In addition it's possible to install pure Python wheels
@@ -32,7 +32,7 @@ Python. When used inside a browser, Python has full access to the Web APIs.
 ## Try Pyodide (no installation needed)
 
 Try Pyodide in a
-[REPL](https://pyodide-cdn2.iodide.io/stable/full/console.html) directly in
+[REPL](https://pyodide.org/en/stable/console.html) directly in
 your browser. For further information, see the
 [documentation](https://pyodide.org/en/stable/).
 
@@ -56,7 +56,7 @@ technical resources. These include:
 
 ## History
 Pyodide was created in 2018 by [Michael Droettboom](https://github.com/mdboom)
-at Mozilla as part of the [iodide
+at Mozilla as part of the [Iodide
 project](https://github.com/iodide-project/iodide). Iodide is an experimental
 web-based notebook environment for literate scientific computing and
 communication.
@@ -73,6 +73,13 @@ on filing issues, making changes, and submitting pull requests. Pyodide is an
 independent and community-driven open-source project. The decision making
 process is outlined in the [Project
 governance](https://pyodide.org/en/stable/project/governance.html).
+
+## Communication
+
+- Mailing list: [mail.python.org/mailman3/lists/pyodide.python.org/](https://mail.python.org/mailman3/lists/pyodide.python.org/)
+- Gitter: [gitter.im/pyodide/community](https://gitter.im/pyodide/community)
+- Twitter: [twitter.com/pyodide](https://twitter.com/pyodide)
+- Stack Overflow: [stackoverflow.com/questions/tagged/pyodide](https://stackoverflow.com/questions/tagged/pyodide)
 
 ## License
 

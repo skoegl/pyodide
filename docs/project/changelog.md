@@ -4,14 +4,116 @@ substitutions:
   Enhancement : "<span class='badge badge-info'>Enhancement</span>"
   Feature : "<span class='badge badge-success'>Feature</span>"
   Fix : "<span class='badge badge-danger'>Fix</span>"
+  Update : "<span class='badge badge-danger'>Update</span>"
 ---
 
 
 (changelog)=
 # Change Log
 
+## [Unreleased]
+
+- {{ API }} {any}`loadPyodide` no longer automatically stores the API into a
+  global variable called `pyodide`. To get old behavior, say `globalThis.pyodide
+  = await loadPyodide({...})`.
+  {pr}`1597`
+- {{ Enhancement }} Added a new {any}`CodeRunner` API for finer control than
+  {any}`eval_code` and {any}`eval_code_async`. Designed with
+  the needs of REPL implementations in mind.
+  {pr}`1563`
+- {{ Fix }} {any}`eval_code_async` no longer automatically awaits a returned
+  coroutine or attempts to await a returned generator object (which triggered an
+  error).
+  {pr}`1563`
+- {{ Fix }} micropip now correctly handles packages that have mixed case names.
+  (See {issue}`1614`).
+  {pr}`1615`
+
+- {{ Enhancement }} Pyodide now ships with first party typescript types for the entire
+  Javascript API (though no typings are available for `PyProxy` fields).
+  {pr}`1601`
+
+- {{ Enhancement }} If a Python error occurs in a reentrant `runPython` call, the error
+  will be propagated into the outer `runPython` context as the original error
+  type. This is particularly important if the error is a `KeyboardInterrupt`.
+  {pr}`1447`
+
+- {{ Update }} Pyodide now runs Python 3.9.5.
+  {pr}`1637`
+
+- {{ Enhancement }} It is now possible to import `Comlink` objects into Pyodide after
+  using {any}`pyodide.registerComlink`
+  {pr}`1642`
+
+- {{ Enhancement }} Pyodide can experimentally be used in Node.js {pr}`1689`
+
+- {{ Enhancement }} Pyodide now directly exposes the emscripten `FS` API,
+  allowing for direct manipulation of the in-memory filesystem {pr}`1692`
+
+- {{ Enhancement }} Pyodide's support of emscripten file systems is expanded from
+  the default `MEMFS` to include `IDBFS`, `NODEFS`, `PROXYFS`, and `WORKERFS`,
+  allowing for custom persistence strategies depending on execution environment
+  {pr}`1596`
+
+## Standard library
+
+- The following standard library modules are now available as standalone packages
+   - distlib
+  They are loaded by default in {any}`globalThis.loadPyodide`, however this behavior
+  can be disabled with the `fullStdLib` parameter set to `false`.
+  All optional stdlib modules can then be loaded as needed with
+  {any}`pyodide.loadPackage`. {pr}`1543`
+- The standard library module `audioop` is now included, making the `wave`,
+  `sndhdr`, `aifc`, and `sunau` modules usable. {pr}`1623`
+
+- Added support for `ctypes`.
+  {pr}`1656`
+
+### Python / JS type conversions
+
+- {{ API }} {any}`pyodide.runPythonAsync` no longer automatically calls
+  {any}`pyodide.loadPackagesFromImports`.
+  {pr}`1538`.
+- {{ Enhancement }} Added the {any}`PyProxy.callKwargs` method to allow using
+  Python functions with keyword arguments from Javascript.
+  {pr}`1539`
+- {{ Enhancement }} Added the {any}`PyProxy.copy` method.
+  {pr}`1549` {pr}`1630`
+- {{ API }} Updated the method resolution order on `PyProxy`. Performing a
+  lookup on a `PyProxy` will prefer to pick a method from the `PyProxy` api, if
+  no such method is found, it will use `getattr` on the proxied object.
+  Prefixing a name with `$` forces `getattr`. For instance, `PyProxy.destroy`
+  now always refers to the method that destroys the proxy, whereas
+  `PyProxy.$destroy` refers to an attribute or method called `destroy` on the
+  proxied object.
+  {pr}`1604`
+- {{ API }} It is now possible to use `Symbol` keys with PyProxies. These
+  `Symbol` keys put markers on the PyProxy that can be used by external code.
+  They will not currently be copied by `PyProxy.copy`.
+  {pr}`1696`
+- {{ Enhancement }} Memory management of `PyProxy` fields has been changed so
+  that fields looked up on a `PyProxy` are "borrowed" and have their lifetime
+  attached to the base `PyProxy`. This is intended to allow for more idiomatic
+  usage.
+  (See {issue}`1617`.) {pr}`1636`
+- {{ API }} The depth argument to `toJs` is now passed as an option, so
+  `toJs(n)` in v0.17 changed to `toJs({depth : n})`. Similarly, `pyodide.toPy`
+  now takes `depth` as a named argument. Also `to_js` and `to_py` only take
+  depth as a keyword argument.
+  {pr}`1721`
+
+### pyodide-build
+
+- {{ Enhancement }} pyodide-build is now an installable Python package, with an identically named
+  CLI entrypoint that replaces `bin/pyodide` which is removed {pr}`1566`
+
+### Packages
+
+- {{ Enhancement }} matplotlib now comes with a new renderer based on the html5 canvas element. {pr}`1579`
+  It is optional and the current default backend is still the agg backend compiled to wasm.
+
 ## Version 0.17.0
-*April 21, 2020*
+*April 21, 2021*
 
 See the {ref}`0-17-0-release-notes` for more information.
 
@@ -147,10 +249,10 @@ See the {ref}`0-17-0-release-notes` for more information.
   {pr}`872`
 - {{ API }} `micropip.install` now returns a Python `Future` instead of a Javascript `Promise`.
   {pr}`1324`
-- {{ FIX }} {any}`micropip.install` now interacts correctly with
+- {{ Fix }} {any}`micropip.install` now interacts correctly with
   {any}`pyodide.loadPackage`.
   {pr}`1457`
-- {{ FIX }} {any}`micropip.install` now handles version constraints correctly
+- {{ Fix }} {any}`micropip.install` now handles version constraints correctly
   even if there is a version of the package available from the Pyodide `indexURL`.
 
 
@@ -178,6 +280,8 @@ See the {ref}`0-17-0-release-notes` for more information.
   [pyodide/pyodide-env](https://hub.docker.com/repository/docker/pyodide/pyodide-env)
   and
   [pyodide/pyodide](https://hub.docker.com/repository/docker/pyodide/pyodide).
+- {{ Enhancement }} Option to run docker in non-interactive mode
+  {pr}`1641`
 
 ### REPL
 
@@ -198,6 +302,14 @@ See the {ref}`0-17-0-release-notes` for more information.
 - Updated packages {pr}`1021`, {pr}`1338`, {pr}`1460`.
 - Added Plotly version 4.14.3 and retrying dependency
   {pr}`1419`
+
+## List of contributors
+
+(in alphabetic order)
+
+Aditya Shankar, casatir, Dexter Chua, dmondev, Frederik Braun, Hood Chatham,
+Jan Max Meyer, Jeremy Tuloup, joemarshall, leafjolt, Michael Greminger,
+Mireille Raad, Ondřej Staněk, Paul m. p. P, rdb, Roman Yurchak, Rudolfs
 
 ## Version 0.16.1
 *December 25, 2020*
