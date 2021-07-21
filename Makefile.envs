@@ -30,9 +30,6 @@ export PYODIDE=1
 export PYODIDE_PACKAGE_ABI=1
 export EM_COMPILER_WRAPPER=ccache
 
-# default == full python, nano == webframework subset, pico == only libs that are nessesary to load pyodide
-export PYTHON_MODE=$(CURRENT_MODE)
-
 export OPTFLAGS=-Os
 export CFLAGS_BASE=\
 	$(OPTFLAGS) \

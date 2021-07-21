@@ -32,7 +32,7 @@ LIBFFI_COMMIT=f671fe3521fb2f383d9b74bd64254b1d3760a31e
 all: $(INSTALL)/lib/$(LIB)
 
 
-$(INSTALL)/lib/$(LIB): $(BUILD)/$(LIB) remove_modules$(PYTHON_MODE).txt
+$(INSTALL)/lib/$(LIB): $(BUILD)/$(LIB) remove_modules$(PYODIDE_BUILD).txt
 	( \
 		cd $(BUILD); \
 		sed -i -e 's/libinstall:.*/libinstall:/' Makefile; \
@@ -46,7 +46,9 @@ $(INSTALL)/lib/$(LIB): $(BUILD)/$(LIB) remove_modules$(PYTHON_MODE).txt
 	mv `cat pybuilddir.txt`/$(SYSCONFIG_NAME).py $(INSTALL)/lib/python$(PYMAJOR).$(PYMINOR)/
 	rmdir `cat pybuilddir.txt`
 	rm pybuilddir.txt
-	cd $(INSTALL)/lib/python$(PYMAJOR).$(PYMINOR)/ && rm -rf `cat $(ROOT)/remove_modules$(PYTHON_MODE).txt`
+	cd $(INSTALL)/lib/python$(PYMAJOR).$(PYMINOR)/ && rm -rf `cat $(ROOT)/remove_modules$(PYODIDE_BUILD).txt`
+	# try to run pyminify; If this fails, pyminify is not available. Check your Docker container version!
+	pyminify --version >/dev/null 2>&1
 	for py in `find $(INSTALL)/lib/python$(PYMAJOR).$(PYMINOR) -name "*.py"`; do echo "Minifying $${py}..."; pyminify --remove-literal-statements $${py} > $${py}.min; mv $${py}.min $${py}; done
 
 
@@ -139,7 +141,7 @@ $(BUILD)/Makefile: $(BUILD)/.patched $(ZLIBBUILD)/.configured $(INSTALL)/lib/lib
 			  LDFLAGS="-static" \
 			  OPT="-fwrapv -Os -Wall" \
 			  CFLAGS="${PYTHON_CFLAGS}" \
-			  CPPFLAGS=$(if $(PYTHON_MODE),"-I$(ZLIBBUILD)","-I$(SQLITEBUILD) -I$(BZIP2BUILD) -I$(ZLIBBUILD)") \
+			  CPPFLAGS=$(if $(PYODIDE_BUILD),"-I$(ZLIBBUILD)","-I$(SQLITEBUILD) -I$(BZIP2BUILD) -I$(ZLIBBUILD)") \
 			  --without-doc-strings \
 			  --without-pymalloc \
 			  --disable-shared \
@@ -152,8 +154,8 @@ $(BUILD)/Makefile: $(BUILD)/.patched $(ZLIBBUILD)/.configured $(INSTALL)/lib/lib
 	)
 
 
-$(BUILD)/Modules/Setup.local : $(BUILD)/Makefile Setup$(PYTHON_MODE).local
-	cp Setup$(PYTHON_MODE).local $(BUILD)/Modules/Setup.local
+$(BUILD)/Modules/Setup.local : $(BUILD)/Makefile Setup$(PYODIDE_BUILD).local
+	cp Setup$(PYODIDE_BUILD).local $(BUILD)/Modules/Setup.local
 
 $(BUILD)/$(LIB): $(BUILD)/Makefile $(BUILD)/pyconfig.h $(BUILD)/Modules/Setup.local $(INSTALL)/lib/libffi.a
 	cat pyconfig.undefs.h >> $(BUILD)/pyconfig.h

@@ -233,8 +233,8 @@ debug :
 
 nano: FORCE
 	# smallest version for flare
-	CURRENT_MODE="_nano" PYODIDE_PACKAGES="False" make
+	PYODIDE_BUILD="_nano" PYODIDE_PACKAGES="False" make
 
 pico: FORCE
 	# smallest possible python version
-	CURRENT_MODE="_pico" PYODIDE_PACKAGES="False" make
+	PYODIDE_BUILD="_pico" PYODIDE_PACKAGES="False" make
