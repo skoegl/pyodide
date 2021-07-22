@@ -38,7 +38,6 @@ distutils
 doctest.py
 dummy_threading.py
 _dummy_thread.py
-email
 filecmp.py
 fileinput.py
 formatter.py
@@ -49,9 +48,6 @@ getpass.py
 gettext.py
 glob.py
 gzip.py
-hmac.py
-html
-http
 imaplib.py
 imghdr.py
 imp.py
@@ -91,7 +87,6 @@ pydoc_data
 pydoc.py
 _pyio.py
 queue.py
-quopri.py
 runpy.py
 sched.py
 secrets.py
@@ -114,7 +109,6 @@ sysconfig.py
 tabnanny.py
 tarfile.py
 telnetlib.py
-tempfile.py
 test
 this.py
 _threading_local.py
@@ -124,7 +118,6 @@ trace.py
 tty.py
 unittest
 uuid.py
-uu.py
 wave.py
 wsgiref
 xdrlib.py
