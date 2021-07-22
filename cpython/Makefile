@@ -29,7 +29,7 @@ FFIBUILD=$(ROOT)/build/libffi
 LIBFFIREPO=https://github.com/hoodmane/libffi-emscripten
 LIBFFI_COMMIT=f671fe3521fb2f383d9b74bd64254b1d3760a31e
 
-all: $(INSTALL)/lib/$(LIB)
+all: $(INSTALL)/lib/$(LIB) $(INSTALL)/lib/libffi.a
 
 
 $(INSTALL)/lib/$(LIB): $(BUILD)/$(LIB) remove_modules$(PYODIDE_BUILD).txt
@@ -47,9 +47,13 @@ $(INSTALL)/lib/$(LIB): $(BUILD)/$(LIB) remove_modules$(PYODIDE_BUILD).txt
 	rmdir `cat pybuilddir.txt`
 	rm pybuilddir.txt
 	cd $(INSTALL)/lib/python$(PYMAJOR).$(PYMINOR)/ && rm -rf `cat $(ROOT)/remove_modules$(PYODIDE_BUILD).txt`
+	\
 	# try to run pyminify; If this fails, pyminify is not available. Check your Docker container version!
 	pyminify --version >/dev/null 2>&1
-	for py in `find $(INSTALL)/lib/python$(PYMAJOR).$(PYMINOR) -name "*.py"`; do echo "Minifying $${py}..."; pyminify --remove-literal-statements $${py} > $${py}.min; mv $${py}.min $${py}; done
+	for py in `find $(INSTALL)/lib/python$(PYMAJOR).$(PYMINOR) -name "*.py"`; \
+		do echo "Minifying $${py}..."; \
+		pyminify --remove-literal-statements $${py} > $${py}.min; mv $${py}.min $${py}; \
+	done
 
 
 clean:

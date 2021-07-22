@@ -28,7 +28,6 @@ _compat_pickle.py
 compileall.py
 _compression.py
 configparser.py
-copy.py
 cProfile.py
 crypt.py
 dataclasses.py
